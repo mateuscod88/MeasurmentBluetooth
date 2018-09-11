@@ -2,6 +2,7 @@
 #define _MAIN_H
 
 #include "stm32f4xx_hal.h"
+#include "stm_interrupt_handlers.h"
 
 #define USARTx USART2
 #define USARTx_CLK_ENABLE() 						__HAL_RCC_USART2_CLK_ENABLE()
@@ -27,7 +28,8 @@
 #define USARTx_DMA_TX_IRQHandler 				DMA1_Stream6_IRQHandler
 #define USARTx_DMA_RX_IRQHandler 				DMA1_Stream5_IRQHandler
 #define USARTx_IRQn 										USART2_IRQn
-#define USARTx_IRQHandler 							USART2_IRQHandler
+#define USARTx_IRQHandler                USART2_IRQHandler
+
 
 #define USARTx_FORCE_RESET() 						__HAL_RCC_USART2_FORCE_RESET()
 #define USARTx_RELEASE_RESET() 					__HAL_RCC_USART2_RELEASE_RESET()

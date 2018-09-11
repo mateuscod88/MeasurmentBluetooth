@@ -3,42 +3,33 @@
 UART_HandleTypeDef UartHandle;
 ADC_HandleTypeDef    AdcHandle;
 __IO uint16_t uhADCxConvertedValue = 0;
-uint8_t aTxBuffer[] = " ****UART ";
+
+uint8_t aTxBuffer[4] ;
+uint8_t aRxBuffer[10];
+static uint8_t txbuf[8];
+uint8_t DMABufHasData;
 static void SystemClock_Config(void);
 static void Error_Handler(void);
+void writeToTxBuffer(void);
+uint8_t makeCharNumber(uint8_t number);
+void InitLed(GPIO_InitTypeDef * GPIO_InitStruct_LED, uint32_t LEDColor);
+
 int main(void)
 {
 	
 	HAL_Init();
 	SystemClock_Config();
+	
 	__HAL_RCC_GPIOD_CLK_ENABLE();
 	GPIO_InitTypeDef GPIO_InitStruct_LED;
 	
-	GPIO_InitStruct_LED.Pin = BLUE_LED_ON;
-	GPIO_InitStruct_LED.Pull = GPIO_PULLUP;
-	GPIO_InitStruct_LED.Mode = GPIO_MODE_OUTPUT_PP;
-	GPIO_InitStruct_LED.Speed = GPIO_SPEED_LOW;
-	HAL_GPIO_Init(GPIOD,&GPIO_InitStruct_LED);
+	InitLed(&GPIO_InitStruct_LED,BLUE_LED_ON);
+	InitLed(&GPIO_InitStruct_LED,ORANGE_LED_ON);
+	InitLed(&GPIO_InitStruct_LED,RED_LED_ON);
+	InitLed(&GPIO_InitStruct_LED,GREEN_LED_ON);
 	
-	GPIO_InitStruct_LED.Pin = ORANGE_LED_ON;
-	GPIO_InitStruct_LED.Pull = GPIO_PULLUP;
-	GPIO_InitStruct_LED.Mode = GPIO_MODE_OUTPUT_PP;
-	GPIO_InitStruct_LED.Speed = GPIO_SPEED_LOW;
-	HAL_GPIO_Init(GPIOD,&GPIO_InitStruct_LED);
-	
-	GPIO_InitStruct_LED.Pin = RED_LED_ON;
-	GPIO_InitStruct_LED.Pull = GPIO_PULLUP;
-	GPIO_InitStruct_LED.Mode = GPIO_MODE_OUTPUT_PP;
-	GPIO_InitStruct_LED.Speed = GPIO_SPEED_LOW;
-	HAL_GPIO_Init(GPIOD,&GPIO_InitStruct_LED);
-	
-	GPIO_InitStruct_LED.Pin = GREEN_LED_ON;
-	GPIO_InitStruct_LED.Pull = GPIO_PULLUP;
-	GPIO_InitStruct_LED.Mode = GPIO_MODE_OUTPUT_PP;
-	GPIO_InitStruct_LED.Speed = GPIO_SPEED_LOW;
-	HAL_GPIO_Init(GPIOD,&GPIO_InitStruct_LED);
-	
-	
+	aTxBuffer[0]= 1; 
+	aTxBuffer[1] = 2;
 	
 	UartHandle.Instance = USART2;
 	
@@ -58,6 +49,10 @@ int main(void)
   {
     Error_Handler();
   }
+	if(HAL_UART_Receive_DMA(&UartHandle,(uint8_t*)aRxBuffer,1) != HAL_OK)
+	{
+		Error_Handler();
+	}
 	ADC_ChannelConfTypeDef sConfig;
 	
 	AdcHandle.Instance = ADCx;
@@ -87,11 +82,15 @@ int main(void)
 	{
 		Error_Handler();
 	}
+	while(UartHandle.gState != HAL_UART_STATE_READY){
+	}
 	if(HAL_ADC_Start_DMA(&AdcHandle,(uint32_t*)&uhADCxConvertedValue,1) != HAL_OK)
 	{
 		Error_Handler();
 	}
-	
+	while(1){
+		
+	}
 }
 static void SystemClock_Config(void)
 {
@@ -135,14 +134,43 @@ static void SystemClock_Config(void)
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle)
 {
 	HAL_GPIO_WritePin(GPIOD,RED_LED_ON,GPIO_PIN_SET);
+	HAL_UART_IRQHandler(UartHandle); 
+	
 }
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
 {
-	HAL_GPIO_WritePin(GPIOD,BLUE_LED_ON,GPIO_PIN_SET);
+	HAL_GPIO_WritePin(GPIOD,ORANGE_LED_ON,GPIO_PIN_SET);
 }
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* AdcHandle)
 {
-	HAL_GPIO_WritePin(GPIOD,GREEN_LED_ON,GPIO_PIN_SET);
+	uint8_t lowByte = (uint8_t)uhADCxConvertedValue;
+	uint8_t highByte = (uint8_t)(uhADCxConvertedValue >> 8);
+	uint16_t temp =0;
+	temp = uhADCxConvertedValue/1000;
+  uint8_t thousends = (uint8_t)temp;
+	temp = (uhADCxConvertedValue%1000)/100;
+	uint8_t hundreds =(uint8_t)temp;
+	temp = (uhADCxConvertedValue%100)/10;
+	uint8_t dec = (uint8_t)temp;
+	temp = (uhADCxConvertedValue%100)%10;
+	uint8_t one = (uint8_t)temp;
+	txbuf[0] = makeCharNumber(thousends);
+	txbuf[1] = makeCharNumber(hundreds);
+	txbuf[2] = makeCharNumber(dec);
+	txbuf[3] = makeCharNumber(one);
+	txbuf[4] = 'm';
+	txbuf[5] = 'v';
+	txbuf[6] = '\r';
+	txbuf[7] = '\n';
+	if(UartHandle.gState != HAL_UART_STATE_READY){
+	 return;	
+	}
+	if(HAL_UART_Transmit_DMA(&UartHandle, (uint8_t*)txbuf, 8)!= HAL_OK)
+  {
+		HAL_GPIO_WritePin(GPIOD,GREEN_LED_ON,GPIO_PIN_SET);
+    Error_Handler();
+  }
+	
 }
 static void Error_Handler(void)
 {
@@ -151,4 +179,31 @@ static void Error_Handler(void)
   while(1)
   {
   }
+}
+void writeToTxBuffer(void){
+	aTxBuffer[0]= (uint8_t)1; 
+	aTxBuffer[1] = (uint8_t)2;
+	aTxBuffer[2] = (uint8_t)2;
+	aTxBuffer[3] =(uint8_t)2;
+
+}
+
+void InitLed(GPIO_InitTypeDef * GPIO_InitStruct_LED, uint32_t LEDColor){
+	GPIO_InitStruct_LED->Pin = LEDColor;
+	GPIO_InitStruct_LED->Pull = GPIO_PULLUP;
+	GPIO_InitStruct_LED->Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct_LED->Speed = GPIO_SPEED_LOW;
+	HAL_GPIO_Init(GPIOD,GPIO_InitStruct_LED);
+}
+uint8_t makeCharNumber(uint8_t number)
+{
+	int i = 0;
+	char lTable[] = {'0','1','2','3','4','5','6','7','8','9'};
+	while(i<10)
+	{
+		if(i == number){
+			return lTable[i];
+		}
+		i++;
+	}
 }
