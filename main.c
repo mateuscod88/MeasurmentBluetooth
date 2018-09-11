@@ -13,7 +13,8 @@ static void Error_Handler(void);
 void writeToTxBuffer(void);
 uint8_t makeCharNumber(uint8_t number);
 void InitLed(GPIO_InitTypeDef * GPIO_InitStruct_LED, uint32_t LEDColor);
-
+void InitUart2(UART_HandleTypeDef * UartHandle);
+void InitADC(ADC_HandleTypeDef * AdcHandle);
 int main(void)
 {
 	
@@ -23,23 +24,16 @@ int main(void)
 	__HAL_RCC_GPIOD_CLK_ENABLE();
 	GPIO_InitTypeDef GPIO_InitStruct_LED;
 	
-	InitLed(&GPIO_InitStruct_LED,BLUE_LED_ON);
-	InitLed(&GPIO_InitStruct_LED,ORANGE_LED_ON);
-	InitLed(&GPIO_InitStruct_LED,RED_LED_ON);
-	InitLed(&GPIO_InitStruct_LED,GREEN_LED_ON);
+	/* all user Leds on board Initialization */
+	InitLed(&GPIO_InitStruct_LED, BLUE_LED_ON);
+	InitLed(&GPIO_InitStruct_LED, ORANGE_LED_ON);
+	InitLed(&GPIO_InitStruct_LED, RED_LED_ON);
+	InitLed(&GPIO_InitStruct_LED, GREEN_LED_ON);
 	
 	aTxBuffer[0]= 1; 
 	aTxBuffer[1] = 2;
-	
-	UartHandle.Instance = USART2;
-	
-	UartHandle.Init.BaudRate = 9600;
-	UartHandle.Init.WordLength = UART_WORDLENGTH_8B;
-	UartHandle.Init.StopBits = UART_STOPBITS_1;
-	UartHandle.Init.Parity = UART_PARITY_NONE;
-	UartHandle.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-	UartHandle.Init.Mode = UART_MODE_TX_RX;
-	UartHandle.Init.OverSampling = UART_OVERSAMPLING_16;
+	/*UART 2 Initialization*/
+	InitUart2(&UartHandle);
 	
 	if(HAL_UART_Init(&UartHandle))
 	{
@@ -53,30 +47,18 @@ int main(void)
 	{
 		Error_Handler();
 	}
+	
 	ADC_ChannelConfTypeDef sConfig;
-	
-	AdcHandle.Instance = ADCx;
-	
-	AdcHandle.Init.ClockPrescaler = ADC_CLOCKPRESCALER_PCLK_DIV2;
-	AdcHandle.Init.Resolution= ADC_RESOLUTION_12B;
-	AdcHandle.Init.ScanConvMode = DISABLE;
-	AdcHandle.Init.ContinuousConvMode = ENABLE;
-	AdcHandle.Init.DiscontinuousConvMode = DISABLE;
-	AdcHandle.Init.NbrOfDiscConversion = 0;
-	AdcHandle.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-	AdcHandle.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T1_CC1;
-	AdcHandle.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-	AdcHandle.Init.NbrOfConversion = 1;
-	AdcHandle.Init.DMAContinuousRequests = ENABLE;
-	AdcHandle.Init.EOCSelection = DISABLE;
+	InitADC(&AdcHandle);
 	
 	if(HAL_ADC_Init(&AdcHandle)){
 		Error_Handler();
 	}
-	sConfig.Channel = ADCx_CHANNEL;
-	sConfig.Rank = 1;
-	sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
-	sConfig.Offset = 0;
+	
+	sConfig.Channel 			= ADCx_CHANNEL;
+	sConfig.Rank 					= 1;
+	sConfig.SamplingTime  = ADC_SAMPLETIME_3CYCLES;
+	sConfig.Offset 				= 0;
 	
 	if(HAL_ADC_ConfigChannel(&AdcHandle,&sConfig))
 	{
@@ -187,13 +169,43 @@ void writeToTxBuffer(void){
 	aTxBuffer[3] =(uint8_t)2;
 
 }
-
+void InitADC(ADC_HandleTypeDef * AdcHandle){
+	
+	AdcHandle->Instance = ADCx;
+	
+	AdcHandle->Init.ClockPrescaler 				= ADC_CLOCKPRESCALER_PCLK_DIV2;
+	AdcHandle->Init.Resolution						= ADC_RESOLUTION_12B;
+	AdcHandle->Init.ScanConvMode 					= DISABLE;
+	AdcHandle->Init.ContinuousConvMode 		= ENABLE;
+	AdcHandle->Init.DiscontinuousConvMode = DISABLE;
+	AdcHandle->Init.NbrOfDiscConversion 	= 0;
+	AdcHandle->Init.ExternalTrigConvEdge 	= ADC_EXTERNALTRIGCONVEDGE_NONE;
+	AdcHandle->Init.ExternalTrigConv 			= ADC_EXTERNALTRIGCONV_T1_CC1;
+	AdcHandle->Init.DataAlign 						= ADC_DATAALIGN_RIGHT;
+	AdcHandle->Init.NbrOfConversion 			= 1;
+	AdcHandle->Init.DMAContinuousRequests = ENABLE;
+	AdcHandle->Init.EOCSelection 					= DISABLE;
+}
+void InitUart2(UART_HandleTypeDef * UartHandle){
+	
+	UartHandle->Instance = USART2;
+	
+	UartHandle->Init.BaudRate   	= 9600;
+	UartHandle->Init.WordLength 	= UART_WORDLENGTH_8B;
+	UartHandle->Init.StopBits   	= UART_STOPBITS_1;
+	UartHandle->Init.Parity     	= UART_PARITY_NONE;
+	UartHandle->Init.HwFlowCtl  	= UART_HWCONTROL_NONE;
+	UartHandle->Init.Mode  				= UART_MODE_TX_RX;
+	UartHandle->Init.OverSampling = UART_OVERSAMPLING_16;
+}
 void InitLed(GPIO_InitTypeDef * GPIO_InitStruct_LED, uint32_t LEDColor){
-	GPIO_InitStruct_LED->Pin = LEDColor;
-	GPIO_InitStruct_LED->Pull = GPIO_PULLUP;
-	GPIO_InitStruct_LED->Mode = GPIO_MODE_OUTPUT_PP;
+	
+	GPIO_InitStruct_LED->Pin   = LEDColor;
+	GPIO_InitStruct_LED->Pull  = GPIO_PULLUP;
+	GPIO_InitStruct_LED->Mode  = GPIO_MODE_OUTPUT_PP;
 	GPIO_InitStruct_LED->Speed = GPIO_SPEED_LOW;
 	HAL_GPIO_Init(GPIOD,GPIO_InitStruct_LED);
+
 }
 uint8_t makeCharNumber(uint8_t number)
 {
