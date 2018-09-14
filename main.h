@@ -3,6 +3,7 @@
 
 #include "stm32f4xx_hal.h"
 #include "stm_interrupt_handlers.h"
+#include "ble_helpers.h"
 
 #define USARTx USART2
 #define USARTx_CLK_ENABLE() 						__HAL_RCC_USART2_CLK_ENABLE()
