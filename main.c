@@ -7,14 +7,17 @@ __IO uint16_t uhADCxConvertedValue = 0;
 uint8_t aTxBuffer[4] ;
 uint8_t aRxBuffer[10];
 static uint8_t txbuf[8];
-uint8_t DMABufHasData;
+
 static void SystemClock_Config(void);
 static void Error_Handler(void);
-void writeToTxBuffer(void);
-uint8_t makeCharNumber(uint8_t number);
+
+void WriteToTxBuffer(void);
+uint8_t MakeCharNumber(uint8_t number);
 void InitLed(GPIO_InitTypeDef * GPIO_InitStruct_LED, uint32_t LEDColor);
 void InitUart2(UART_HandleTypeDef * UartHandle);
 void InitADC(ADC_HandleTypeDef * AdcHandle);
+void ConfigADC(ADC_ChannelConfTypeDef * sConfig);
+void Convert_ADC_Value_To_Char_Array(uint8_t * txBuffer);
 int main(void)
 {
 	
@@ -48,17 +51,15 @@ int main(void)
 		Error_Handler();
 	}
 	
-	ADC_ChannelConfTypeDef sConfig;
+	
 	InitADC(&AdcHandle);
 	
 	if(HAL_ADC_Init(&AdcHandle)){
 		Error_Handler();
 	}
-	
-	sConfig.Channel 			= ADCx_CHANNEL;
-	sConfig.Rank 					= 1;
-	sConfig.SamplingTime  = ADC_SAMPLETIME_3CYCLES;
-	sConfig.Offset 				= 0;
+	/* Config ADC*/
+	ADC_ChannelConfTypeDef sConfig;
+	ConfigADC(&sConfig);
 	
 	if(HAL_ADC_ConfigChannel(&AdcHandle,&sConfig))
 	{
@@ -73,7 +74,7 @@ int main(void)
 	while(1){
 		
 	}
-}
+} 
 static void SystemClock_Config(void)
 {
   RCC_ClkInitTypeDef RCC_ClkInitStruct;
@@ -125,25 +126,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
 }
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* AdcHandle)
 {
-	uint8_t lowByte = (uint8_t)uhADCxConvertedValue;
-	uint8_t highByte = (uint8_t)(uhADCxConvertedValue >> 8);
-	uint16_t temp =0;
-	temp = uhADCxConvertedValue/1000;
-  uint8_t thousends = (uint8_t)temp;
-	temp = (uhADCxConvertedValue%1000)/100;
-	uint8_t hundreds =(uint8_t)temp;
-	temp = (uhADCxConvertedValue%100)/10;
-	uint8_t dec = (uint8_t)temp;
-	temp = (uhADCxConvertedValue%100)%10;
-	uint8_t one = (uint8_t)temp;
-	txbuf[0] = makeCharNumber(thousends);
-	txbuf[1] = makeCharNumber(hundreds);
-	txbuf[2] = makeCharNumber(dec);
-	txbuf[3] = makeCharNumber(one);
-	txbuf[4] = 'm';
-	txbuf[5] = 'v';
-	txbuf[6] = '\r';
-	txbuf[7] = '\n';
+	Convert_ADC_Value_To_Char_Array(txbuf);
+	
 	if(UartHandle.gState != HAL_UART_STATE_READY){
 	 return;	
 	}
@@ -162,7 +146,7 @@ static void Error_Handler(void)
   {
   }
 }
-void writeToTxBuffer(void){
+void WriteToTxBuffer(void){
 	aTxBuffer[0]= (uint8_t)1; 
 	aTxBuffer[1] = (uint8_t)2;
 	aTxBuffer[2] = (uint8_t)2;
@@ -186,6 +170,12 @@ void InitADC(ADC_HandleTypeDef * AdcHandle){
 	AdcHandle->Init.DMAContinuousRequests = ENABLE;
 	AdcHandle->Init.EOCSelection 					= DISABLE;
 }
+void ConfigADC(ADC_ChannelConfTypeDef * sConfig){
+	sConfig->Channel 			= ADCx_CHANNEL;
+	sConfig->Rank 					= 1;
+	sConfig->SamplingTime  = ADC_SAMPLETIME_3CYCLES;
+	sConfig->Offset 				= 0;
+}
 void InitUart2(UART_HandleTypeDef * UartHandle){
 	
 	UartHandle->Instance = USART2;
@@ -207,7 +197,7 @@ void InitLed(GPIO_InitTypeDef * GPIO_InitStruct_LED, uint32_t LEDColor){
 	HAL_GPIO_Init(GPIOD,GPIO_InitStruct_LED);
 
 }
-uint8_t makeCharNumber(uint8_t number)
+uint8_t MakeCharNumber(uint8_t number)
 {
 	int i = 0;
 	char lTable[] = {'0','1','2','3','4','5','6','7','8','9'};
@@ -218,4 +208,27 @@ uint8_t makeCharNumber(uint8_t number)
 		}
 		i++;
 	}
+}
+void Convert_ADC_Value_To_Char_Array(uint8_t * txBuffer){
+	uint8_t lowByte = (uint8_t)uhADCxConvertedValue;
+	uint8_t highByte = (uint8_t)(uhADCxConvertedValue >> 8);
+	uint16_t temp = 0;
+	
+	temp = uhADCxConvertedValue/1000;
+  uint8_t thousends = (uint8_t)temp;
+	temp = (uhADCxConvertedValue%1000)/100;
+	uint8_t hundreds =(uint8_t)temp;
+	temp = (uhADCxConvertedValue%100)/10;
+	uint8_t dec = (uint8_t)temp;
+	temp = (uhADCxConvertedValue%100)%10;
+	uint8_t one = (uint8_t)temp;
+	
+	txBuffer[0] = MakeCharNumber(thousends);
+	txBuffer[1] = MakeCharNumber(hundreds);
+	txBuffer[2] = MakeCharNumber(dec);
+	txBuffer[3] = MakeCharNumber(one);
+	txBuffer[4] = 'm';
+	txBuffer[5] = 'v';
+	txBuffer[6] = '\r';
+	txBuffer[7] = '\n';
 }
